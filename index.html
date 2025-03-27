@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resta Um</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .tabuleiro {
+            display: grid;
+            grid-template-columns: repeat(7, 50px);
+            grid-template-rows: repeat(7, 50px);
+            gap: 2px;
+            margin-bottom: 20px;
+        }
+        
+        .celula {
+            width: 50px;
+            height: 50px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .celula.vazia {
+            background-color: #d3d3d3;
+        }
+        
+        .celula.ocupada {
+            background-color: #8b4513;
+        }
+        
+        .celula.selecionada {
+            background-color: #ffd700;
+        }
+        
+        .celula.movimento-valido {
+            background-color: #90ee90;
+        }
+        
+        .celula.fora {
+            background-color: transparent;
+        }
+        
+        .peca {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #a52a2a;
+            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.3);
+        }
+        
+        .controles {
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 10px 15px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4682b4;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #36648b;
+        }
+        
+        .status {
+            margin-top: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Resta Um</h1>
+    <div class="tabuleiro" id="tabuleiro"></div>
+    <div class="status" id="status">Peças restantes: 32</div>
+    <div class="controles">
+        <button id="reiniciar">Reiniciar Jogo</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabuleiro = document.getElementById('tabuleiro');
+            const statusEl = document.getElementById('status');
+            const reiniciarBtn = document.getElementById('reiniciar');
+            
+            let tabuleiroEstado = [];
+            let pecaSelecionada = null;
+            let movimentosValidos = [];
+            
+            // Inicializa o tabuleiro
+            function inicializarTabuleiro() {
+                tabuleiro.innerHTML = '';
+                tabuleiroEstado = [];
+                pecaSelecionada = null;
+                movimentosValidos = [];
+                
+                // Layout do tabuleiro: 0 = fora, 1 = vazio, 2 = ocupado
+                const layout = [
+                    [0, 0, 2, 2, 2, 0, 0],
+                    [0, 0, 2, 2, 2, 0, 0],
+                    [2, 2, 2, 2, 2, 2, 2],
+                    [2, 2, 2, 1, 2, 2, 2],
+                    [2, 2, 2, 2, 2, 2, 2],
+                    [0, 0, 2, 2, 2, 0, 0],
+                    [0, 0, 2, 2, 2, 0, 0]
+                ];
+                
+                for (let i = 0; i < 7; i++) {
+                    tabuleiroEstado[i] = [];
+                    for (let j = 0; j < 7; j++) {
+                        const celula = document.createElement('div');
+                        celula.dataset.linha = i;
+                        celula.dataset.coluna = j;
+                        
+                        // Define o estado da célula
+                        if (layout[i][j] === 0) {
+                            celula.className = 'celula fora';
+                            tabuleiroEstado[i][j] = 0;
+                        } else if (layout[i][j] === 1) {
+                            celula.className = 'celula vazia';
+                            tabuleiroEstado[i][j] = 1;
+                        } else {
+                            celula.className = 'celula ocupada';
+                            const peca = document.createElement('div');
+                            peca.className = 'peca';
+                            celula.appendChild(peca);
+                            tabuleiroEstado[i][j] = 2;
+                        }
+                        
+                        celula.addEventListener('click', () => selecionarCelula(i, j));
+                        tabuleiro.appendChild(celula);
+                    }
+                }
+                
+                atualizarStatus();
+            }
+            
+            // Verifica movimentos válidos
+            function verificarMovimentosValidos(linha, coluna) {
+                const movimentos = [];
+                
+                // Verificar para cima
+                if (linha >= 2 && tabuleiroEstado[linha-1][coluna] === 2 && tabuleiroEstado[linha-2][coluna] === 1) {
+                    movimentos.push({linha: linha-2, coluna: coluna});
+                }
+                
+                // Verificar para baixo
+                if (linha <= 4 && tabuleiroEstado[linha+1][coluna] === 2 && tabuleiroEstado[linha+2][coluna] === 1) {
+                    movimentos.push({linha: linha+2, coluna: coluna});
+                }
+                
+                // Verificar para a esquerda
+                if (coluna >= 2 && tabuleiroEstado[linha][coluna-1] === 2 && tabuleiroEstado[linha][coluna-2] === 1) {
+                    movimentos.push({linha: linha, coluna: coluna-2});
+                }
+                
+                // Verificar para a direita
+                if (coluna <= 4 && tabuleiroEstado[linha][coluna+1] === 2 && tabuleiroEstado[linha][coluna+2] === 1) {
+                    movimentos.push({linha: linha, coluna: coluna+2});
+                }
+                
+                return movimentos;
+            }
+            
+            // Selecionar uma célula
+            function selecionarCelula(linha, coluna) {
+                // Caso célula fora do tabuleiro
+                if (tabuleiroEstado[linha][coluna] === 0) return;
+                
+                // Limpar seleções anteriores
+                limparSelecoes();
+                
+                // Caso célula vazia e há uma peça selecionada
+                if (tabuleiroEstado[linha][coluna] === 1 && pecaSelecionada) {
+                    // Verifique se este movimento é válido
+                    const movValido = movimentosValidos.find(m => m.linha === linha && m.coluna === coluna);
+                    
+                    if (movValido) {
+                        // Calcular a peça que será capturada
+                        const linhaCapturada = (pecaSelecionada.linha + linha) / 2;
+                        const colunaCapturada = (pecaSelecionada.coluna + coluna) / 2;
+                        
+                        // Mover a peça
+                        tabuleiroEstado[pecaSelecionada.linha][pecaSelecionada.coluna] = 1; // Origem fica vazia
+                        tabuleiroEstado[linhaCapturada][colunaCapturada] = 1; // Remove a peça do meio
+                        tabuleiroEstado[linha][coluna] = 2; // Destino recebe a peça
+                        
+                        // Atualizar a interface
+                        atualizarTabuleiro();
+                        atualizarStatus();
+                        
+                        // Verificar fim de jogo
+                        verificarFimDeJogo();
+                    }
+                    
+                    pecaSelecionada = null;
+                    return;
+                }
+                
+                // Caso célula ocupada (com peça)
+                if (tabuleiroEstado[linha][coluna] === 2) {
+                    pecaSelecionada = { linha, coluna };
+                    
+                    // Marcar a peça selecionada
+                    const celulaEl = document.querySelector(`[data-linha="${linha}"][data-coluna="${coluna}"]`);
+                    celulaEl.classList.add('selecionada');
+                    
+                    // Verificar movimentos válidos
+                    movimentosValidos = verificarMovimentosValidos(linha, coluna);
+                    
+                    // Marcar movimentos válidos
+                    movimentosValidos.forEach(mov => {
+                        const movEl = document.querySelector(`[data-linha="${mov.linha}"][data-coluna="${mov.coluna}"]`);
+                        movEl.classList.add('movimento-valido');
+                    });
+                }
+            }
+            
+            // Limpar seleções
+            function limparSelecoes() {
+                document.querySelectorAll('.selecionada, .movimento-valido').forEach(el => {
+                    el.classList.remove('selecionada', 'movimento-valido');
+                });
+            }
+            
+            // Atualizar o tabuleiro visualmente
+            function atualizarTabuleiro() {
+                for (let i = 0; i < 7; i++) {
+                    for (let j = 0; j < 7; j++) {
+                        const celula = document.querySelector(`[data-linha="${i}"][data-coluna="${j}"]`);
+                        
+                        // Pular células fora do tabuleiro
+                        if (tabuleiroEstado[i][j] === 0) continue;
+                        
+                        // Atualizar célula
+                        if (tabuleiroEstado[i][j] === 1) { // Vazia
+                            celula.className = 'celula vazia';
+                            celula.innerHTML = '';
+                        } else { // Ocupada
+                            celula.className = 'celula ocupada';
+                            if (!celula.querySelector('.peca')) {
+                                const peca = document.createElement('div');
+                                peca.className = 'peca';
+                                celula.appendChild(peca);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Atualizar status do jogo
+            function atualizarStatus() {
+                let pecasRestantes = 0;
+                for (let i = 0; i < 7; i++) {
+                    for (let j = 0; j < 7; j++) {
+                        if (tabuleiroEstado[i][j] === 2) {
+                            pecasRestantes++;
+                        }
+                    }
+                }
+                
+                statusEl.textContent = `Peças restantes: ${pecasRestantes}`;
+                
+                // Verificar vitória
+                if (pecasRestantes === 1) {
+                    statusEl.textContent += ' - Parabéns! Você venceu!';
+                }
+            }
+            
+            // Verificar se há movimentos possíveis
+            function verificarFimDeJogo() {
+                for (let i = 0; i < 7; i++) {
+                    for (let j = 0; j < 7; j++) {
+                        if (tabuleiroEstado[i][j] === 2) {
+                            const movimentos = verificarMovimentosValidos(i, j);
+                            if (movimentos.length > 0) {
+                                return; // Ainda existem movimentos possíveis
+                            }
+                        }
+                    }
+                }
+                
+                // Se chegou aqui, não há mais movimentos
+                const pecasRestantes = document.querySelectorAll('.peca').length;
+                if (pecasRestantes > 1) {
+                    statusEl.textContent = `Fim de jogo! Sobraram ${pecasRestantes} peças. Tente novamente!`;
+                }
+            }
+            
+            // Evento para reiniciar o jogo
+            reiniciarBtn.addEventListener('click', inicializarTabuleiro);
+            
+            // Iniciar o jogo
+            inicializarTabuleiro();
+        });
+    </script>
+</body>
+</html>
